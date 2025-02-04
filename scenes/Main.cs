@@ -1,33 +1,34 @@
+using Game.Manager;
 using Godot;
-using System;
 
 namespace Game;
 
-public partial class Main : Node2D
+public partial class Main : Node
 {
+	private GridManager gridManager;
 	private Sprite2D cursor;
 	private PackedScene buildingScene;
 	private Button placeBuildingButton;
-	private TileMapLayer highlightTilemapLayer;
 	private Vector2? hoveredGridCell;
+	
 	// Called when the node enters the scene tree for the first time.
 	public override void _Ready()
 	{
 		buildingScene = GD.Load<PackedScene>("res://scenes/building/Building.tscn");
+		gridManager = GetNode<GridManager>("GridManager");
 		cursor = GetNode<Sprite2D>("Cursor");
 		placeBuildingButton = GetNode<Button>("PlaceBuildingButton");
-		highlightTilemapLayer = GetNode<TileMapLayer>("HighlightTileMapLayer");
 
 		cursor.Visible = false;
 
 		placeBuildingButton.Pressed += OnButtonPressed;
 	}
-
+	
 	public override void _UnhandledInput(InputEvent evt)
 	{
-		if (cursor.Visible && evt.IsActionPressed("left_click"))
+		if (hoveredGridCell.HasValue && evt.IsActionPressed("left_click") && gridManager.IsTilePositionValid(hoveredGridCell.Value))
 		{
-			PlaceBuildingAtMousePosition();
+			PlaceBuildingAtHoveredCellPosition();
 			cursor.Visible = false;
 		}
 	}
@@ -35,44 +36,29 @@ public partial class Main : Node2D
 	// Called every frame. 'delta' is the elapsed time since the previous frame.
 	public override void _Process(double delta)
 	{
-		var gridPosition = GetMouseGridCellPosition();
+		var gridPosition = gridManager.GetMouseGridCellPosition();
 		cursor.GlobalPosition = gridPosition * 64;
 		if (cursor.Visible && (!hoveredGridCell.HasValue || hoveredGridCell.Value != gridPosition))
 		{
 			hoveredGridCell = gridPosition;
-			UpdateHighlightTileMapLayer();
+			gridManager.HighlightValidTilesInRadius(hoveredGridCell.Value, 3);
 		}
 	}
 
-	private Vector2 GetMouseGridCellPosition()
-	{
-		var mousePosition = GetGlobalMousePosition();
-		var gridPosition = mousePosition / 64;
-		gridPosition = gridPosition.Floor();
-		return gridPosition;
-	}
+	
 
-	private void PlaceBuildingAtMousePosition()
+	private void PlaceBuildingAtHoveredCellPosition()
 	{
+		if (!hoveredGridCell.HasValue) return;
+
 		var building = buildingScene.Instantiate<Node2D>();
 		AddChild(building);
 
-		var gridPosition = GetMouseGridCellPosition();
-		building.GlobalPosition = gridPosition * 64;
+		building.GlobalPosition = hoveredGridCell.Value * 64;
+		gridManager.MarkTileAsOccupied(hoveredGridCell.Value);
 
 		hoveredGridCell = null;
-		UpdateHighlightTileMapLayer();
-	}
-
-	private void UpdateHighlightTileMapLayer()
-	{
-		highlightTilemapLayer.Clear();
-
-		if (!hoveredGridCell.HasValue) return;
-
-		for (var x = hoveredGridCell.Value.X - 3; x <= hoveredGridCell.Value.X + 3; x++)
-			for (var y = hoveredGridCell.Value.Y - 3; y <= hoveredGridCell.Value.Y + 3; y++)
-				highlightTilemapLayer.SetCell(new Vector2I((int)x, (int)y), 0, Vector2I.Zero);
+		gridManager.ClearHighlightedTiles();
 	}
 
 	private void OnButtonPressed()
