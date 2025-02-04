@@ -9,7 +9,7 @@ public partial class Main : Node
 	private Sprite2D cursor;
 	private PackedScene buildingScene;
 	private Button placeBuildingButton;
-	private Vector2? hoveredGridCell;
+	private Vector2I? hoveredGridCell;
 	
 	// Called when the node enters the scene tree for the first time.
 	public override void _Ready()
@@ -26,7 +26,7 @@ public partial class Main : Node
 	
 	public override void _UnhandledInput(InputEvent evt)
 	{
-		if (hoveredGridCell.HasValue && evt.IsActionPressed("left_click") && gridManager.IsTilePositionValid(hoveredGridCell.Value))
+		if (hoveredGridCell.HasValue && evt.IsActionPressed("left_click") && gridManager.IsTilePositionBuildable(hoveredGridCell.Value))
 		{
 			PlaceBuildingAtHoveredCellPosition();
 			cursor.Visible = false;
@@ -41,7 +41,7 @@ public partial class Main : Node
 		if (cursor.Visible && (!hoveredGridCell.HasValue || hoveredGridCell.Value != gridPosition))
 		{
 			hoveredGridCell = gridPosition;
-			gridManager.HighlightValidTilesInRadius(hoveredGridCell.Value, 3);
+			gridManager.HighlightBuildableTiles();
 		}
 	}
 
@@ -55,7 +55,6 @@ public partial class Main : Node
 		AddChild(building);
 
 		building.GlobalPosition = hoveredGridCell.Value * 64;
-		gridManager.MarkTileAsOccupied(hoveredGridCell.Value);
 
 		hoveredGridCell = null;
 		gridManager.ClearHighlightedTiles();

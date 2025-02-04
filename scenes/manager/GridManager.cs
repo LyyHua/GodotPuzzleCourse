@@ -1,40 +1,35 @@
 using System.Collections.Generic;
+using System.Linq;
+using Game.Autoload;
+using Game.Component;
 using Godot;
 
 namespace Game.Manager;
 
 public partial class GridManager : Node
 {
-	private HashSet<Vector2> occupiedCells = new();
+	private HashSet<Vector2I> validBuildableTiles = new();
 	[Export]
 	private TileMapLayer highlightTilemapLayer;
 	[Export]
 	private TileMapLayer baseTerrainTilemapLayer;
-	// Called when the node enters the scene tree for the first time.
-	public override void _Ready()
-	{
+    public override void _Ready()
+    {
+        GameEvents.Instance.BuildingPlaced += OnBuildingPlaced;
+    }
 
+    public bool IsTilePositionValid(Vector2I tilePosition)
+	{
+		var customData = baseTerrainTilemapLayer.GetCellTileData(tilePosition);
+		if (customData == null) return false;
+		return !(bool)customData.GetCustomData("buildable");
 	}
 
-	public bool IsTilePositionValid(Vector2 tilePosition)
-	{
-		return !occupiedCells.Contains(tilePosition);
-	}
-	public void MarkTileAsOccupied(Vector2 tilePosition)
-	{
-		occupiedCells.Add(tilePosition);
-	}
+	public bool IsTilePositionBuildable(Vector2I tilePosition) => validBuildableTiles.Contains(tilePosition);
 
-	public void HighlightValidTilesInRadius(Vector2 rootCell, int radius)
+	public void HighlightBuildableTiles()
 	{
-		ClearHighlightedTiles();
-
-		for (var x = rootCell.X - radius; x <= rootCell.X + radius; x++)
-			for (var y = rootCell.Y - radius; y <= rootCell.Y + radius; y++)
-			{
-				if (!IsTilePositionValid(new Vector2(x, y))) continue;
-				highlightTilemapLayer.SetCell(new Vector2I((int)x, (int)y), 0, Vector2I.Zero);
-			}
+		foreach (var tilePosition in validBuildableTiles) highlightTilemapLayer.SetCell(tilePosition, 0, new Vector2I(0, 0));
 	}
 
 	public void ClearHighlightedTiles()
@@ -42,11 +37,29 @@ public partial class GridManager : Node
 		highlightTilemapLayer.Clear();
 	}
 
-	public Vector2 GetMouseGridCellPosition()
+	public Vector2I GetMouseGridCellPosition()
 	{
 		var mousePosition = highlightTilemapLayer.GetGlobalMousePosition();
 		var gridPosition = mousePosition / 64;
 		gridPosition = gridPosition.Floor();
-		return gridPosition;
+		return new Vector2I((int)gridPosition.X, (int)gridPosition.Y);
+	}
+
+	private void UpdateValidBuildableTiles(BuildingComponent buildingComponent)
+	{
+		var rootCell = buildingComponent.GetGridCellPosition();
+		for (var x = rootCell.X - buildingComponent.BuildableRadius; x <= rootCell.X + buildingComponent.BuildableRadius; x++)
+			for (var y = rootCell.Y - buildingComponent.BuildableRadius; y <= rootCell.Y + buildingComponent.BuildableRadius; y++)
+			{
+				var tilePosition = new Vector2I(x, y);
+				if (!IsTilePositionValid(tilePosition)) continue;
+				validBuildableTiles.Add(tilePosition);
+			}
+		validBuildableTiles.Remove(buildingComponent.GetGridCellPosition());
+	}
+
+	private void OnBuildingPlaced(BuildingComponent buildingComponent)
+	{
+		UpdateValidBuildableTiles(buildingComponent);
 	}
 }
