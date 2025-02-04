@@ -13,29 +13,26 @@ public partial class GridManager : Node
 	private TileMapLayer highlightTilemapLayer;
 	[Export]
 	private TileMapLayer baseTerrainTilemapLayer;
-    public override void _Ready()
-    {
-        GameEvents.Instance.BuildingPlaced += OnBuildingPlaced;
-    }
+	public override void _Ready()
+	{
+		GameEvents.Instance.BuildingPlaced += OnBuildingPlaced;
+	}
 
-    public bool IsTilePositionValid(Vector2I tilePosition)
+	public bool IsTilePositionValid(Vector2I tilePosition)
 	{
 		var customData = baseTerrainTilemapLayer.GetCellTileData(tilePosition);
 		if (customData == null) return false;
-		return !(bool)customData.GetCustomData("buildable");
+		return (bool)customData.GetCustomData("buildable");
 	}
 
 	public bool IsTilePositionBuildable(Vector2I tilePosition) => validBuildableTiles.Contains(tilePosition);
 
 	public void HighlightBuildableTiles()
 	{
-		foreach (var tilePosition in validBuildableTiles) highlightTilemapLayer.SetCell(tilePosition, 0, new Vector2I(0, 0));
+		foreach (var tilePosition in validBuildableTiles) highlightTilemapLayer.SetCell(tilePosition, 0, Vector2I.Zero);
 	}
 
-	public void ClearHighlightedTiles()
-	{
-		highlightTilemapLayer.Clear();
-	}
+	public void ClearHighlightedTiles() => highlightTilemapLayer.Clear();	
 
 	public Vector2I GetMouseGridCellPosition()
 	{
@@ -58,8 +55,6 @@ public partial class GridManager : Node
 		validBuildableTiles.Remove(buildingComponent.GetGridCellPosition());
 	}
 
-	private void OnBuildingPlaced(BuildingComponent buildingComponent)
-	{
-		UpdateValidBuildableTiles(buildingComponent);
-	}
+	private void OnBuildingPlaced(BuildingComponent buildingComponent) => UpdateValidBuildableTiles(buildingComponent);
+	
 }

@@ -45,8 +45,6 @@ public partial class Main : Node
 		}
 	}
 
-	
-
 	private void PlaceBuildingAtHoveredCellPosition()
 	{
 		if (!hoveredGridCell.HasValue) return;
@@ -60,8 +58,5 @@ public partial class Main : Node
 		gridManager.ClearHighlightedTiles();
 	}
 
-	private void OnButtonPressed()
-	{
-		cursor.Visible = true;
-	}
+	private void OnButtonPressed() => cursor.Visible = true;
 }
